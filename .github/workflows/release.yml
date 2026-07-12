@@ -7,7 +7,44 @@ on:
       - 'v*'
 
 jobs:
-  publish-tauri:
+  # Stage 1: create the draft release ONCE, before any build runs.
+  # This avoids the race where parallel matrix jobs each create their own draft.
+  create-release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    outputs:
+      release_id: ${{ steps.create-release.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: get version
+        run: echo "PACKAGE_VERSION=$(node -pe "require('./package.json').version")" >> $GITHUB_ENV
+
+      - name: create release
+        id: create-release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data } = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+              name: `Local Ledger v${process.env.PACKAGE_VERSION}`,
+              body: 'Installers for Windows, macOS and Linux are attached below under Assets.',
+              draft: true,
+              prerelease: false,
+            })
+            return data.id
+
+  # Stage 2: build on every platform and upload into the SINGLE release from stage 1.
+  build-tauri:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -55,9 +92,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Local Ledger v__VERSION__'
-          releaseBody: 'Installers for Windows, macOS and Linux are attached below under Assets.'
-          releaseDraft: true
-          prerelease: false
+          # Upload into the release created in stage 1 instead of creating a new one.
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
