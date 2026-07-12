@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Local Ledger: Simple Portfolio Tracker</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <!-- libraries -->
+        <script src="lib/jquery-4.0.0.min.js" type="text/javascript" defer></script>
+        <script src="lib/chart.umd.min.js" type="text/javascript" defer></script>
+        <script src="lib/bootstrap.bundle.min.js" type="text/javascript" defer></script>
+        <link rel="stylesheet" href="lib/bootstrap.min.css">
+        <!-- own stuff -->
+        <link rel="stylesheet" href="styles.css">
+        <script src="main.js" type="text/javascript" defer></script>
+    </head>
+    <body>
+        <!-- Navigation -->
+        <img id="logo" src="assets/logo_1024x1024.png" style="position: fixed; object-fit: contain; margin-top: -3rem; width: 10rem; height: 10rem;">
+        <div id="conNavbar" class="center box flex-container-row" style="max-height: 72px;">
+            <button id="btnNavAbout" class="btn btn-primary">About</button>
+            <button id="btnNavOverview" class="btn btn-primary">Overview</button>
+            <button id="btnNavPortfolios" class="btn btn-primary">Portfolios</button>
+        </div>
+
+        <!-- Global messages (save/load errors) appear here regardless of the active page -->
+        <div id="globalAlert" class="mt-3"></div>
+
+        <!-- Pages -->
+        <main>
+            <!-- About -->
+            <section id="pageAbout" class="page-section">
+                    <h1>About</h1>
+                    <div class="flex-container-column" style="margin-top: 3rem;">
+                        <h2>What is Local-Ledger?</h2>
+                        <p>Local-Ledger is a Portfolio Manager</p>
+                    </div>
+                    <div class="flex-container-column" style="margin-top: 3rem;">
+                        <h2>What ressources where used in creation?</h2>
+                        <p>Bootstrap</p>
+                        <p>jQUery</p>
+                        <p>Chart.js</p>
+                    </div>
+                    <div class="flex-container-column" style="margin-top: 3rem;">
+                        <h2>Contact</h2>
+                        <p>GitHub: <a href="https://github.com/JJanGit">https://github.com/JJanGit</a></p>
+                    </div>
+            </section>
+
+            <!-- Overview -->
+            <section id="pageOverview" class="page-section">
+                <!-- Inital / Empty data page -->
+                <div id="emptyOverview" class="overview-state">
+                    <div class="flex-container-column" style="margin-top: 9rem; gap: 1rem">
+                        <h2 class="center">No data yet ;(</h2>
+                        <h2 class="center">Import your existing Portfolios or get started by creating a new one!</h2>
+                        <br>
+                        <div class="center flex-container-row" style="gap: 6rem">
+                            <button id="btnStart" class="btn btn-primary" style="width: 8rem">Get Started</button>
+                            <button id="btnImport" data-bs-toggle="modal" data-bs-target="#importModal" class="btn btn-primary" style="width: 8rem">Import</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Data page -->
+                <div id="dataOverview" class="overview-state">
+                    <div id="currentWorthDisplay" class="mb-3">
+                        <div class="kpi-label">Current Worth</div>
+                        <div id="kpiCurrentWorth" class="kpi-value-hero">—</div>
+                    </div>
+                    <div id="chartViewSwitcher" class="btn-group mb-3" role="group">
+                        <button class="btn btn-primary btn-chart-view active" data-mode="combined">Combined</button>
+                    </div>
+                    <div class="chart-kpi-row">
+                        <div class="chart-column">
+                            <!-- Chart container -->
+                            <div class="chart-container">
+                                <canvas id="chart"></canvas>
+                            </div>
+
+                            <!-- Date range presets -->
+                            <div id="timelinePresets" class="btn-group" role="group">
+                                <button class="btn btn-secondary btn-preset" data-preset="1m">1M</button>
+                                <button class="btn btn-secondary btn-preset" data-preset="3m">3M</button>
+                                <button class="btn btn-secondary btn-preset" data-preset="ytd">YTD</button>
+                                <button class="btn btn-secondary btn-preset" data-preset="1y">1Y</button>
+                                <button class="btn btn-secondary btn-preset" data-preset="3y">3Y</button>
+                                <button class="btn btn-secondary btn-preset active" data-preset="all">All</button>
+                            </div>
+
+                            <!-- Timeline range slider -->
+                            <div id="timelineSlider" class="timeline-slider">
+                                <div id="timelineSelection" class="timeline-selection"></div>
+                                <div id="timelineHandleStart" class="timeline-handle"></div>
+                                <div id="timelineHandleEnd" class="timeline-handle"></div>
+                            </div>
+                            <div class="timeline-labels">
+                                <span id="timelineStartLabel" class="timeline-label">—</span>
+                                <span id="timelineEndLabel" class="timeline-label">—</span>
+                            </div>
+                        </div>
+                        <!-- KPI panel -->
+                        <div id="kpiPanel" class="box flex-container-column">
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">Invested</span>
+                                <span id="kpiInvested" class="kpi-value">—</span>
+                            </div>
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">Profit / Loss</span>
+                                <span id="kpiPnl" class="kpi-value">—</span>
+                                <span id="kpiPnlPct" class="kpi-value">—</span>
+                            </div>
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">All-time High</span>
+                                <span id="kpiAth" class="kpi-value">—</span>
+                            </div>
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">Max Drawdown</span>
+                                <div class="kpi-row">
+                                    <span id="kpiDrawdown" class="kpi-value">—</span>
+                                    <span id="kpiDrawdownEur" class="kpi-value">—</span>
+                                </div>
+                            </div>
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">Best Month</span>
+                                <div class="kpi-row">
+                                    <span id="kpiBestPeriod" class="kpi-value">—</span>
+                                    <span id="kpiBestChange" class="kpi-value kpi-positive">—</span>
+                                    <span id="kpiBestEur" class="kpi-value kpi-positive">—</span>
+                                </div>
+                            </div>
+                            <div class="flex-container-column" style="gap: 0.25rem;">
+                                <span class="kpi-label">Worst Month</span>
+                                <div class="kpi-row">
+                                    <span id="kpiWorstPeriod" class="kpi-value">—</span>
+                                    <span id="kpiWorstChange" class="kpi-value kpi-negative">—</span>
+                                    <span id="kpiWorstEur" class="kpi-value kpi-negative">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Portfolios -->
+            <section id="pagePortfolios" class="page-section">
+                <h1>Portfolios</h1>
+                <div class="flex-container-column" style="margin-top: 3rem;">
+
+                    <!-- Import / Export -->
+                    <div class="flex-container-row" style="gap: 1rem; margin-bottom: 2rem;">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">Import</button>
+                        <button id="btnExport" class="btn btn-primary">Export</button>
+                    </div>
+
+                    <!-- Portfolio creation -->
+                    <h2 style="margin-bottom: 1rem;">Creation</h2>
+                    <div id="portfolioCreationBox" class="box flex-container-row">
+                        <div class="flex-container-column">
+                            <label class="form-label">Name</label>
+                            <input id="pName" class="form-control"/>
+                        </div>
+                        <div class="flex-container-column">
+                            <label class="form-label">Starting Amount</label>
+                            <input id="pAmount" class="form-control"/>
+                        </div>
+                        <div class="flex-container-column">
+                            <label class="form-label">Initial Date</label>
+                            <input id="pDate" class="form-control" type="date"/>
+                        </div>
+                        <div class="flex-container-column">
+                            <button id="btnCreatePortfolio" class="btn btn-primary" style="margin-top: 2rem; width: 8rem;">Create</button>
+                        </div>
+                    </div>
+
+                    <div id="portfolioAlert" class="mt-3"><!-- Messages appear here --></div>
+
+                    <!-- Portfolio list -->
+                    <h2 style="margin-top: 3rem; margin-bottom: 1rem;">List</h2>
+                    <div id="portfolioContainer" class="flex-container-row" style="gap: 3rem;">
+                        <!-- Portfolios append here -->
+                    </div>
+                </div>
+
+                <!-- Entries modal -->
+                <div id="entriesModal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-scroll="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Portfolio Entries</h5>
+                                <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <button id="portfolioAddEntry" class="btn-add-entry btn btn-primary mb-3" style="margin-top: 0.5rem;">Add Entry</button>
+                                <div id="entriesModalAlert"></div>
+
+                                <div id="entriesListContainer" class="flex-container-column" style="gap: 1rem;">
+                                    <!-- Entries will be added here! -->
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button id="btnConfirmEntries" class="btn btn-primary">Save</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modals have to be at body level so Bootstrap can render them regardless of which overview state is currently visible -->
+        <!-- Settings modal -->
+        <div id="settingsModal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-scroll="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Portfolio Settings</h5>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="settingsModalAlert"></div>
+                        <label class="form-label">Name</label>
+                        <input id="settingsName" class="form-control"/>
+                    </div>
+                    <div class="modal-footer" style="justify-content: space-between;">
+                        <button id="btnDeletePortfolio" class="btn btn-warning">Delete Portfolio</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button id="btnSaveSettings" class="btn btn-primary">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Import modal-->
+        <div id="importModal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-scroll="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Import</h5>
+                        <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="importAlert"></div>
+                        <div id="importDropZone">Drop .json file here or click to browse</div>
+                        <input type="file" id="importFileInput" accept=".json" style="display: none;">
+                        <textarea id="txtImportJson" placeholder="Or paste your JSON here..."></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button id="btnConfirmImport" class="btn btn-primary">Import</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
